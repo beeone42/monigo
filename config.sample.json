@@ -1,0 +1,19 @@
+{
+	"trackers": [
+		{
+			"name": "server_temperature",
+			"track_url": "https://mysrv.domain.com/stats",
+			"field": "temp",
+			"min_value": 20,
+			"max_value": 45,
+			"alerts": ["me"]
+		}
+	],
+	"alerts": [
+		{
+			"name": "me",
+			"url": "https://slack.com/hook/me/msg",
+			"param": "text"
+		}
+	]
+}
