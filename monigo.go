@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/jmoiron/jsonq"
@@ -28,7 +29,7 @@ type Alert struct {
 
 type Configuration struct {
 	Trackers []Tracker `json:"trackers"`
-	alerts   []Alert `json:"alerts"`
+	Alerts   []Alert `json:"alerts"`
 }
 
 var conf Configuration
@@ -43,7 +44,7 @@ func main() {
 		fmt.Printf("Processing tracker %s\n", t.Name)
 		val, err := GetValue(t.TrackURL, t.Field);
 		if err != nil {
-			fmt.Printf("error: ")
+			fmt.Printf("error: %s\n", err.Error())
 		}
 		fmt.Printf("Result %.1f\n", val)
 		if val < t.MinValue {
@@ -63,12 +64,11 @@ func GetValue(url, field string) (float64, error) {
 		return 0, err
 	}
 	defer resp.Body.Close()
-	contents, err2 := ioutil.ReadAll(resp.Body)
-	if err2 != nil {
+	contents, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
 		fmt.Printf("%s\n", err)
-		return 0, err2
+		return 0, err
 	}
-	//fmt.Printf("%s\n", string(contents))
 
 	data := map[string]interface{}{}
 	dec := json.NewDecoder(strings.NewReader(string(contents)))
@@ -81,4 +81,29 @@ func GetValue(url, field string) (float64, error) {
 
 func SendAlert(conf Configuration, t Tracker, val float64, txt string) {
 	fmt.Printf("%s\n", txt)
+	for _, s := range t.Alerts {
+		fmt.Printf("Alerting %s\n", s)
+		for _, a := range conf.Alerts {
+			if a.Name == s {
+				SendJson(a.URL, []byte(`{"` + a.Param +  `":"` + txt + `"}`))
+			}
+		}
+	}
 }
+
+func SendJson(url string, jsonStr []byte) {
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	fmt.Println(string(body))
+}
+
+
+
+
